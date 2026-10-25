@@ -1,2 +1,2 @@
 # pfund-bybit
-Official Bybit trading venue plugin for pfund
+Official Bybit trading venue plugin for pfund, can be used as a standalone Bybit trading API client built on pfund-blocks.

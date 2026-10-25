@@ -1,0 +1,63 @@
+[workspace]
+authors = ["softwareentrepreneer <softwareentrepreneer+pfund-bybit@gmail.com>"]
+channels = ["conda-forge"]
+name = "pfund-bybit"
+platforms = ["osx-arm64", "linux-aarch64", "linux-64", "win-64"]
+# NOTE: should match with setup-pixi in ci.yml
+requires-pixi = ">=0.83.0"
+# FIXME: set it back to "14 days" when the package is stable
+exclude-newer = "0d"
+
+[pypi-exclude-newer]
+uv_build = "0d"
+afterpython = "0d"
+pfund-blocks = "0d"
+pfund-kit = "0d"
+
+[tasks]
+
+[tasks.test-all]
+depends-on = [
+  { task = "test", environment = "py313" },
+  { task = "test", environment = "py314" },
+  { task = "test", environment = "py315" },
+]
+
+[dependencies]
+
+[pypi-dependencies]
+pfund-blocks = ">=0.0.1"
+httpx2 = { version = ">=2.16.0", extras = ["http2"] }
+websockets = ">=17.3.0"
+
+[environments]
+default = ["py313", "dev", "test"]
+py313 = ["py313", "test"]
+py314 = ["py314", "test"]
+py315 = ["py315", "test"]
+
+[feature.dev.pypi-dependencies]
+pfund-bybit = { path = ".", editable = true }
+pfund-blocks = { path = "../pfund-blocks", editable = true }  # TEMP
+afterpython = ">=0.4.0"
+
+[feature.test.pypi-dependencies]
+pfund-bybit = { path = ".", editable = true }
+pfund-blocks = { path = "../pfund-blocks", editable = true }  # TEMP
+pytest = ">=9.1.1"
+pytest-mock = ">=3.16.0"
+pytest-xdist = ">=3.8.0"
+pytest-asyncio = ">=1.4.0"
+# pytest-cov = ">=7.1.0"
+# pytest-recording = ">=0.14.0"
+[feature.test.tasks]
+test = "pytest -n auto"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[feature.py314.dependencies]
+python = "3.14.*"
+
+[feature.py315.dependencies]
+python = "3.15.*"
