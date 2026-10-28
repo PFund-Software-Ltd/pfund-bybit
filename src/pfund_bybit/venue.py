@@ -40,9 +40,7 @@ class Bybit(BaseVenue):
         ],
         docs_url="https://bybit-exchange.github.io/docs/v5/intro",
     )
-
-    def __init__(self):
-        self.adapter = BybitAdapter()
+    adapter: ClassVar[BybitAdapter] = BybitAdapter()  # ty: ignore[invalid-mutable-override]
 
     @classmethod
     def get_category(cls, product: BaseProduct) -> Category:
