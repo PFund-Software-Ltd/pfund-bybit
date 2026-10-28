@@ -224,3 +224,6 @@ __marimo__/
 
 # zed settings
 **/.zed/
+
+# macOS
+.DS_Store
