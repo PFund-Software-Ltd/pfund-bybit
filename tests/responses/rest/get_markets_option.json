@@ -1,0 +1,81 @@
+{
+  "retCode": 0,
+  "retMsg": "success",
+  "result": {
+    "category": "option",
+    "nextPageCursor": "0%2C3",
+    "list": [
+      {
+        "symbolId": 424533,
+        "symbol": "BTC-24SEP27-65000-P-USDT",
+        "status": "Trading",
+        "baseCoin": "BTC",
+        "quoteCoin": "USDT",
+        "settleCoin": "USDT",
+        "optionsType": "Put",
+        "launchTime": "1792855800000",
+        "deliveryTime": "1821772800000",
+        "deliveryFeeRate": "0.00015",
+        "priceFilter": {
+          "minPrice": "5",
+          "maxPrice": "1110000",
+          "tickSize": "5"
+        },
+        "lotSizeFilter": {
+          "maxOrderQty": "500",
+          "minOrderQty": "0.01",
+          "qtyStep": "0.01"
+        },
+        "displayName": "BTCUSDT-24SEP27-65000-P"
+      },
+      {
+        "symbolId": 424532,
+        "symbol": "BTC-24SEP27-65000-C-USDT",
+        "status": "Trading",
+        "baseCoin": "BTC",
+        "quoteCoin": "USDT",
+        "settleCoin": "USDT",
+        "optionsType": "Call",
+        "launchTime": "1792855800000",
+        "deliveryTime": "1821772800000",
+        "deliveryFeeRate": "0.00015",
+        "priceFilter": {
+          "minPrice": "5",
+          "maxPrice": "1110000",
+          "tickSize": "5"
+        },
+        "lotSizeFilter": {
+          "maxOrderQty": "500",
+          "minOrderQty": "0.01",
+          "qtyStep": "0.01"
+        },
+        "displayName": "BTCUSDT-24SEP27-65000-C"
+      },
+      {
+        "symbolId": 408165,
+        "symbol": "BTC-24SEP27-170000-P-USDT",
+        "status": "Trading",
+        "baseCoin": "BTC",
+        "quoteCoin": "USDT",
+        "settleCoin": "USDT",
+        "optionsType": "Put",
+        "launchTime": "1791446400000",
+        "deliveryTime": "1821772800000",
+        "deliveryFeeRate": "0.00015",
+        "priceFilter": {
+          "minPrice": "5",
+          "maxPrice": "1110000",
+          "tickSize": "5"
+        },
+        "lotSizeFilter": {
+          "maxOrderQty": "500",
+          "minOrderQty": "0.01",
+          "qtyStep": "0.01"
+        },
+        "displayName": "BTCUSDT-24SEP27-170000-P"
+      }
+    ]
+  },
+  "retExtInfo": {},
+  "time": 1793262069898
+}

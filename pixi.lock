@@ -2413,9 +2413,11 @@ packages:
 - pypi: ../../../pfund-blocks
   name: pfund-blocks
   requires_dist:
+  - python-dotenv>=1.2.4
+  - httpx2[http2]>=2.16.0
+  - websockets>=16.1.1
   - msgspec>=0.22.0
   - pydantic>=2.14.1
-  - python-dotenv>=1.2.4
   requires_python: '>=3.13'
 - pypi: ./
   name: pfund-bybit
