@@ -7,8 +7,8 @@ if TYPE_CHECKING:
     from pfund_blocks.entities.products.option import OptionProduct
     from pfund_blocks.entities.products.product_base import BaseProduct
 
-from pfund_blocks.entities.adapters.adapter_base import ExternalValue
-from pfund_blocks.entities.adapters.adapter_venue import (
+from pfund_blocks.adapters.adapter_base import ExternalValue
+from pfund_blocks.adapters.adapter_venue import (
     OrderStatusRepr,
     VenueAdapter,
 )
