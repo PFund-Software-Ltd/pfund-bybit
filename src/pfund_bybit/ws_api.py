@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from pfund_blocks.typing import (
         DecodedMessage,
         FullChannel,
+        Message,
+        ProductName,
         RawMessage,
         WebSocketName,
     )
@@ -18,6 +20,7 @@ from pfund_blocks.apis.ws_api_base import BaseWebSocketAPI
 from pfund_blocks.enums import Channel, ChannelType, Environment
 from pfund_blocks.enums.timeframe import Timeframe
 from pfund_blocks.resolution import Resolution
+from pfund_blocks.typing import ChannelInfo
 
 from pfund_bybit.parser import BybitParser
 from pfund_bybit.venue import Bybit
@@ -45,9 +48,15 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
     ping_message: ClassVar[dict[str, Any] | None] = {"op": "ping"}
     # max number of public channels in the "args" of one (un)subscription request, unlimited if not listed
     # NOTE: private channels have no limit
-    # REVIEW: option's limit
     MAX_PUBLIC_CHANNELS_PER_SUBSCRIPTION: ClassVar[dict[Bybit.Category, int]] = {
         Bybit.Category.SPOT: 10,
+    }
+    # max number of public channels of one connection
+    # NOTE: spot/linear/inverse's 100 is effective from 26 Nov 2026
+    MAX_PUBLIC_CHANNELS_PER_CONNECTION: ClassVar[dict[Bybit.Category, int]] = {
+        Bybit.Category.SPOT: 100,
+        Bybit.Category.LINEAR: 100,
+        Bybit.Category.INVERSE: 100,
         Bybit.Category.OPTION: 2000,
     }
     # key -> periods, e.g. MINUTE: [1, 3] means 1m and 3m
@@ -57,32 +66,30 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
     ] = {
         Bybit.Category.LINEAR: {
             Resolution("QUOTE_L1"): [1],
-            Resolution("QUOTE_L2"): [1, 50, 200, 500],
+            Resolution("QUOTE_L2"): [1, 50, 200, 1000],
             Timeframe.TICK: [1],
             Timeframe.MINUTE: [1, 3, 5, 15, 30, 60, 120, 240, 360, 720],
             Timeframe.DAY: [1],
         },
         Bybit.Category.INVERSE: {
             Resolution("QUOTE_L1"): [1],
-            Resolution("QUOTE_L2"): [1, 50, 200, 500],
+            Resolution("QUOTE_L2"): [1, 50, 200, 1000],
             Timeframe.TICK: [1],
             Timeframe.MINUTE: [1, 3, 5, 15, 30, 60, 120, 240, 360, 720],
             Timeframe.DAY: [1],
         },
         Bybit.Category.SPOT: {
             Resolution("QUOTE_L1"): [1],
-            Resolution("QUOTE_L2"): [1, 50],
+            Resolution("QUOTE_L2"): [1, 50, 200, 1000],
             Timeframe.TICK: [1],
             Timeframe.MINUTE: [1, 3, 5, 15, 30, 60, 120, 240, 360, 720],
             Timeframe.DAY: [1],
         },
-        # REVIEW: verify that options have klines
         Bybit.Category.OPTION: {
             # NOTE: option trading doesn't support QUOTE_L1
+            # NOTE: no klines for options, the subscription succeeds but no data is pushed
             Resolution("QUOTE_L2"): [25, 100],
             Timeframe.TICK: [1],
-            Timeframe.MINUTE: [1, 3, 5, 15, 30, 60, 120, 240, 360, 720],
-            Timeframe.DAY: [1],
         },
     }
 
@@ -107,6 +114,14 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
             return super()._create_ws_name(account)
         return f"{self.venue.lower()}_{self._category}_ws"
 
+    def create_market_data_channel(self, product: BaseProduct, resolution: Resolution) -> FullChannel:
+        full_channel = super().create_market_data_channel(product, resolution)
+        # NOTE: an option's trade channel (e.g. "publicTrade.BTC") is shared by all options of the base coin,
+        # so it has no single product, filled per option in _dispatch_message()
+        if self._category == Bybit.Category.OPTION and resolution.is_tick():
+            self._channel_infos[full_channel] = ChannelInfo(channel=Channel.tradebook, product=None)
+        return full_channel
+
     def get_supported_resolutions(self, product: BaseProduct) -> list[Resolution]:
         resolutions: list[Resolution] = []
         for key, periods in self.SUPPORTED_RESOLUTIONS[Bybit.get_category(product)].items():
@@ -128,12 +143,43 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
         if resolution.is_tick():
             # e.g. "publicTrade.BTCUSDT"
             echannel = adapter.to_source(Channel.tradebook, group="channel", strict=True)
+            # NOTE: option trades are streamed per base coin, e.g. "publicTrade.BTC", see _dispatch_message()
+            if self._category == Bybit.Category.OPTION:
+                ebase_asset = adapter.to_source(product.base_asset, group="asset")
+                return f"{echannel}.{ebase_asset}"
             return f"{echannel}.{product.symbol}"
         if resolution.is_quote():
             # e.g. "orderbook.50.BTCUSDT", the period of a quote resolution is the orderbook depth
             echannel = adapter.to_source(Channel.orderbook, group="channel", strict=True)
             return f"{echannel}.{resolution.period}.{product.symbol}"
         raise NotImplementedError(f"{self.venue} {resolution=} is not supported")
+
+    async def _dispatch_message(self, message: Message) -> None:
+        # NOTE: option trades are streamed per base coin, e.g. "publicTrade.BTC" has the trades of all BTC options,
+        # so its message is a bag of trades of many options, unwrapped into one message per added option
+        # REVIEW: sketch, needs parse_tradebook() to keep Bybit's symbol in each trade, assumed to be "symbol" here
+        channel, trades = message["channel"], message["data"]
+        channel_info = self._channel_infos.get(channel) if channel else None
+        is_option_trades = self._category == Bybit.Category.OPTION and channel_info and channel_info.channel == Channel.tradebook
+        if not is_option_trades or trades is None:
+            return await super()._dispatch_message(message)
+        products = {product.symbol: product.name for product in self._products.values()}
+        trades_per_product: dict[ProductName, list[Any]] = {}
+        for trade in trades:
+            # trades of options that were not added are dropped
+            if product := products.get(trade["symbol"]):
+                trades_per_product.setdefault(product, []).append(trade)
+        for product, product_trades in trades_per_product.items():
+            await super()._dispatch_message({**message, "product": product, "data": product_trades})
+
+    def add_channel(self, channel: FullChannel, *, channel_type: ChannelType | Literal["public", "private"]):
+        # one public connection per category, so a channel over the limit can't be streamed
+        public_channels = self._channels[ChannelType.public]
+        if ChannelType(channel_type.lower()) == ChannelType.public and channel not in public_channels:
+            limit = self.MAX_PUBLIC_CHANNELS_PER_CONNECTION[self._category]
+            if len(public_channels) >= limit:
+                raise ValueError(f"{self.venue} {self._category} supports at most {limit} public channels per connection")
+        super().add_channel(channel, channel_type=channel_type)
 
     def _batch_channels(self, channels: list[FullChannel], channel_type: ChannelType) -> list[list[FullChannel]]:
         """Splits public channels into batches within the category's MAX_PUBLIC_CHANNELS_PER_SUBSCRIPTION."""
@@ -173,6 +219,11 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
         elif "topic" in msg:
             # e.g. {"topic": "kline.1.BTCUSDT", "type": "snapshot", "ts": 1672324988882, "data": [...]}
             return msg["topic"], msg
+        elif msg.get("type") == "COMMAND_RESP":
+            # e.g. option's subscription ack, {"success": true, "data": {"failTopics": [], "successTopics": [...]}, "type": "COMMAND_RESP"}
+            if msg["data"].get("failTopics"):
+                return None, msg
+            return None
         else:
             self._logger.warning(f"{ws.name} unhandled msg {msg}")
             return None

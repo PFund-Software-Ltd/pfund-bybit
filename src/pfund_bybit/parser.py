@@ -56,6 +56,9 @@ class BybitParser(BaseParser):
         # e.g. {"success": false, "ret_msg": "error:handler not found,topic:kline.1.BTCUSD", "op": "subscribe"}
         if message.get("success") is False:
             return message.get("ret_msg") or "unknown error"
+        # e.g. option's {"success": true, "data": {"failTopics": ["kline.1.X"], "successTopics": []}, "type": "COMMAND_RESP"}
+        if message.get("type") == "COMMAND_RESP" and (fail_topics := message["data"].get("failTopics")):
+            return f"failed topics: {fail_topics}"
         return None
 
     def parse_markets(self, response: dict[str, Any]) -> list[MarketDict]:

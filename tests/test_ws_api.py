@@ -91,8 +91,21 @@ class TestCreateMarketDataChannel:
     def test_option_channels(self):
         api = BybitWebSocketAPI("LIVE", "option")
         option = create("BTC_USDT_OPT", expiration="2024-08-30", strike_price=60000, option_type="call")
-        assert api.create_market_data_channel(option, Resolution("1m")) == "kline.1.BTC-30AUG24-60000-C"
-        assert api.create_market_data_channel(option, Resolution("1t")) == "publicTrade.BTC-30AUG24-60000-C"
+        assert api.create_market_data_channel(option, Resolution("1t")) == "publicTrade.BTC"
+
+    def test_option_trade_channel_has_no_product(self):
+        api = BybitWebSocketAPI("LIVE", "option")
+        call = create("BTC_USDT_OPT", expiration="2024-08-30", strike_price=60000, option_type="call")
+        put = create("BTC_USDT_OPT", expiration="2024-08-30", strike_price=60000, option_type="put")
+        assert api.create_market_data_channel(call, Resolution("1t")) == "publicTrade.BTC"
+        assert api.create_market_data_channel(put, Resolution("1t")) == "publicTrade.BTC"
+        assert api._channel_infos["publicTrade.BTC"].product is None
+
+    def test_option_has_no_klines(self):
+        api = BybitWebSocketAPI("LIVE", "option")
+        option = create("BTC_USDT_OPT", expiration="2024-08-30", strike_price=60000, option_type="call")
+        with pytest.raises(ValueError, match="is not supported"):
+            api.create_market_data_channel(option, Resolution("1m"))
 
     @pytest.mark.parametrize(
         ("resolution", "channel"),
@@ -100,7 +113,7 @@ class TestCreateMarketDataChannel:
             ("1q_L1", "orderbook.1.BTCUSDT"),
             ("1q_L2", "orderbook.1.BTCUSDT"),
             ("50q_L2", "orderbook.50.BTCUSDT"),
-            ("500q_L2", "orderbook.500.BTCUSDT"),
+            ("1000q_L2", "orderbook.1000.BTCUSDT"),
         ],
     )
     def test_orderbook_channel(self, api: BybitWebSocketAPI, resolution: str, channel: str):
@@ -123,7 +136,7 @@ class TestSupportedResolutions:
         assert Resolution("1q_L1") in resolutions
         assert Resolution("1q_L2") in resolutions
         assert Resolution("50q_L2") in resolutions
-        assert Resolution("500q_L2") in resolutions
+        assert Resolution("1000q_L2") in resolutions
         assert Resolution("1t") in resolutions
         assert Resolution("1h") in resolutions  # = 60m
         assert Resolution("1d") in resolutions
@@ -155,6 +168,19 @@ async def subscribe(api: BybitWebSocketAPI, channels: list[str], channel_type: C
     api._send = _send  # ty: ignore[invalid-assignment]
     await api.subscribe(create_ws(), channels, channel_type)
     return sent
+
+
+class TestAddChannel:
+    def test_public_channels_over_the_connection_limit_raise(self, api: BybitWebSocketAPI):
+        for i in range(100):
+            api.add_channel(f"publicTrade.COIN{i}USDT", channel_type="public")
+        api.add_channel("publicTrade.COIN0USDT", channel_type="public")  # already added, not counted
+        with pytest.raises(ValueError, match="at most 100 public channels per connection"):
+            api.add_channel("publicTrade.COIN100USDT", channel_type="public")
+
+    def test_private_channels_have_no_limit(self, api: BybitWebSocketAPI):
+        for i in range(101):
+            api.add_channel(f"channel{i}", channel_type="private")
 
 
 class TestSubscribe:
@@ -193,6 +219,18 @@ class TestParseMessage:
         channel, decoded = result
         assert channel is None
         assert api.parser.parse_message_error(channel, decoded) == "error:handler not found,topic:kline.1.X"
+
+    def test_option_subscription_ack_is_dropped(self, api: BybitWebSocketAPI):
+        msg = {"success": True, "data": {"failTopics": [], "successTopics": ["orderbook.25.X"]}, "type": "COMMAND_RESP"}
+        assert api._parse_message(create_ws(), json.encode(msg)) is None
+
+    def test_option_failed_topics_are_an_error(self, api: BybitWebSocketAPI):
+        msg = {"success": True, "data": {"failTopics": ["kline.1.X"], "successTopics": []}, "type": "COMMAND_RESP"}
+        result = api._parse_message(create_ws(), json.encode(msg))
+        assert result is not None
+        channel, decoded = result
+        assert channel is None
+        assert api.parser.parse_message_error(channel, decoded) == "failed topics: ['kline.1.X']"
 
     def test_data_message(self, api: BybitWebSocketAPI):
         msg = {"topic": "kline.1.BTCUSDT", "type": "snapshot", "ts": 1672324988882, "data": []}
