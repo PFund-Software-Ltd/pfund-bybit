@@ -39,6 +39,7 @@ py315 = ["py315", "test"]
 pfund-bybit = { path = ".", editable = true }
 pfund-blocks = { path = "../../../pfund-blocks", editable = true }  # TEMP
 afterpython = ">=0.4.0"
+pybit = ">=5.17.0"
 
 [feature.test.pypi-dependencies]
 pfund-bybit = { path = ".", editable = true }
