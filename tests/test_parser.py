@@ -23,7 +23,7 @@ def load(category: str) -> dict[str, Any]:
 
 
 def parse_markets(category: str) -> list[dict[str, Any]]:
-    return BybitParser().parse_rest("get_markets", load(category))
+    return BybitParser().parse_response("get_markets", load(category))
 
 
 class TestParseMarkets:

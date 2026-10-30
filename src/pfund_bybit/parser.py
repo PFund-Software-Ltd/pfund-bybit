@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from pfund_blocks.entities.markets.market_base import MarketDict
+    from pfund_blocks.typing import EndpointName
 
 from pfund_blocks.entities.products.product_type import ProductType
 from pfund_blocks.enums import OptionType
@@ -44,6 +45,12 @@ class BybitParser(BaseParser):
     def _to_strike_price(symbol: str) -> Decimal:
         # e.g. "BTC-24SEP27-65000-P-USDT" -> 65000
         return Decimal(symbol.split("-")[2])
+
+    def parse_response_success(self, name: EndpointName, response: dict[str, Any]) -> bool:
+        return response.get("retCode") == 0
+
+    def parse_response_error(self, name: EndpointName, response: dict[str, Any]) -> str | None:
+        return response.get("retMsg") or None
 
     def parse_markets(self, response: dict[str, Any]) -> list[MarketDict]:
         """Parses the markets of one category (spot, linear, inverse or option) into dicts of BaseMarket's fields."""

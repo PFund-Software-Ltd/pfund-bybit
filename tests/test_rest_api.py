@@ -68,26 +68,26 @@ class TestGetMarkets:
         api = BybitRestAPI("LIVE")
         payload = load(category)
         mock_responses(mocker, api, payload)
-        result = await api.get_markets(category)
-        assert result["success"] is True
-        assert result["error"] == ""
-        assert result["response"] == [payload]
-        assert result["data"] == BybitRestAPI.parser.parse_markets(payload)
+        reply = await api.get_markets(category)
+        assert reply["success"] is True
+        assert reply["error"] is None
+        assert reply["response"] == [payload]
+        assert reply["data"] == BybitRestAPI.parser.parse_markets(payload)
 
     async def test_ret_code_error(self, mocker: MockerFixture):
         api = BybitRestAPI("LIVE")
         mock_responses(mocker, api, {"retCode": 10001, "retMsg": "params error", "result": {}})
-        result = await api.get_markets("linear")
-        assert result["success"] is False
-        assert result["error"] == "params error"
-        assert result["data"] is None
+        reply = await api.get_markets("linear")
+        assert reply["success"] is False
+        assert reply["error"] == "params error"
+        assert reply["data"] is None
 
     async def test_http_error(self, mocker: MockerFixture):
         api = BybitRestAPI("LIVE")
         mock_responses(mocker, api, {"retCode": 10001, "retMsg": "params error"}, status_code=400)
-        result = await api.get_markets("linear")
-        assert result["success"] is False
-        assert result["error"] == "params error (HTTP 400 Error)"
+        reply = await api.get_markets("linear")
+        assert reply["success"] is False
+        assert reply["error"] == "params error (HTTP 400 Error)"
 
 
 @pytest.mark.asyncio
@@ -97,10 +97,10 @@ class TestGetMarketsPagination:
         payload = load("option")
         pages = paginate(payload, page_size=1)
         request = mock_responses(mocker, api, *copy.deepcopy(pages))
-        result = await api.get_markets("option")
-        assert result["success"] is True
-        assert result["response"] == pages  # raw, one per page
-        assert result["data"] == BybitRestAPI.parser.parse_markets(payload)
+        reply = await api.get_markets("option")
+        assert reply["success"] is True
+        assert reply["response"] == pages  # raw, one per page
+        assert reply["data"] == BybitRestAPI.parser.parse_markets(payload)
         assert request.call_count == len(pages) == 3
 
     async def test_cursor_is_unquoted(self, mocker: MockerFixture):
@@ -115,10 +115,10 @@ class TestGetMarketsPagination:
         first_page = paginate(load("option"), page_size=1)[0]
         error = {"retCode": 10006, "retMsg": "Too many visits!", "result": {}}
         mock_responses(mocker, api, first_page, error)
-        result = await api.get_markets("option")
-        assert result["success"] is False
-        assert result["error"] == "Too many visits!"
-        assert result["data"] is None
+        reply = await api.get_markets("option")
+        assert reply["success"] is False
+        assert reply["error"] == "Too many visits!"
+        assert reply["data"] is None
 
 
 class TestEndpoints:
