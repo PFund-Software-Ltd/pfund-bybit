@@ -122,9 +122,10 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
             self._channel_infos[full_channel] = ChannelInfo(channel=Channel.tradebook, product=None)
         return full_channel
 
-    def get_supported_resolutions(self, product: BaseProduct) -> list[Resolution]:
+    @classmethod
+    def get_supported_resolutions(cls, product: BaseProduct) -> list[Resolution]:
         resolutions: list[Resolution] = []
-        for key, periods in self.SUPPORTED_RESOLUTIONS[Bybit.get_category(product)].items():
+        for key, periods in cls.SUPPORTED_RESOLUTIONS[Bybit.get_category(product)].items():
             if isinstance(key, Timeframe):
                 resolutions += [Resolution(f"{period}{key.canonical}") for period in periods]
             else:

@@ -131,8 +131,8 @@ class TestCreateMarketDataChannel:
 
 
 class TestSupportedResolutions:
-    def test_expanded_from_timeframe_periods(self, api: BybitWebSocketAPI):
-        resolutions = api.get_supported_resolutions(create("BTC_USDT_PERP"))
+    def test_expanded_from_timeframe_periods(self):
+        resolutions = BybitWebSocketAPI.get_supported_resolutions(create("BTC_USDT_PERP"))
         assert Resolution("1q_L1") in resolutions
         assert Resolution("1q_L2") in resolutions
         assert Resolution("50q_L2") in resolutions
