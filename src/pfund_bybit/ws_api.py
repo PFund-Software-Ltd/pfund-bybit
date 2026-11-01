@@ -119,7 +119,9 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
         # NOTE: an option's trade channel (e.g. "publicTrade.BTC") is shared by all options of the base coin,
         # so it has no single product, filled per option in _dispatch_message()
         if self._category == Bybit.Category.OPTION and resolution.is_tick():
-            self._channel_infos[full_channel] = ChannelInfo(channel=Channel.tradebook, product=None)
+            self._channel_infos[full_channel] = ChannelInfo(
+                channel=Channel.tradebook, product=None, resolution=repr(resolution)
+            )
         return full_channel
 
     @classmethod
