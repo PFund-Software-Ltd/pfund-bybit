@@ -119,9 +119,7 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
         # NOTE: an option's trade channel (e.g. "publicTrade.BTC") is shared by all options of the base coin,
         # so it has no single product, filled per option in _dispatch_message()
         if self._category == Bybit.Category.OPTION and resolution.is_tick():
-            self._channel_infos[full_channel] = ChannelInfo(
-                channel=Channel.tradebook, product=None, resolution=repr(resolution)
-            )
+            self._channel_infos[full_channel] = ChannelInfo(product=None, resolution=repr(resolution))
         return full_channel
 
     @classmethod
@@ -161,9 +159,14 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
         # NOTE: option trades are streamed per base coin, e.g. "publicTrade.BTC" has the trades of all BTC options,
         # so its message is a bag of trades of many options, unwrapped into one message per added option
         # REVIEW: sketch, needs parse_tradebook() to keep Bybit's symbol in each trade, assumed to be "symbol" here
-        channel, trades = message["channel"], message["data"]
-        channel_info = self._channel_infos.get(channel) if channel else None
-        is_option_trades = self._category == Bybit.Category.OPTION and channel_info and channel_info.channel == Channel.tradebook
+        # NOTE: the option trade channel is the only public channel without a product (see create_market_data_channel()),
+        # private messages have no product either, but also no resolution
+        trades = message["data"]
+        is_option_trades = (
+            self._category == Bybit.Category.OPTION and
+            message["product"] is None and
+            message["resolution"] is not None
+        )
         if not is_option_trades or trades is None:
             return await super()._dispatch_message(message)
         products = {product.symbol: product.name for product in self._products.values()}

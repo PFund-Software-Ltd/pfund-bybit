@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from pfund_blocks.typing import EndpointName, FullChannel
 
 from pfund_blocks.entities.products.product_type import ProductType
-from pfund_blocks.enums import OptionType
+from pfund_blocks.enums import OptionType, Channel
 from pfund_blocks.parsers.parser_base import BaseParser
 
 from pfund_bybit.adapter import BybitAdapter
@@ -51,6 +51,18 @@ class BybitParser(BaseParser):
 
     def parse_response_error(self, name: EndpointName, response: dict[str, Any]) -> str | None:
         return response.get("retMsg") or None
+
+    def parse_message(self, channel: FullChannel, message: dict[str, Any]):
+        # e.g. "kline.1.BTCUSDT" -> Channel.candlestick
+        channel = self.adapter.from_source(channel.split(".")[0], group="channel", strict=True)
+        if channel == Channel.candlestick:
+            return self.parse_candlestick(message)
+        elif channel == Channel.tick:
+            return self.parse_tradebook(message)
+        elif channel == Channel.orderbook:
+            return self.parse_orderbook(message)
+        else:
+            raise NotImplementedError(f"{channel=} is not supported")
 
     def parse_message_error(self, channel: FullChannel | None, message: dict[str, Any]) -> str | None:
         # e.g. {"success": false, "ret_msg": "error:handler not found,topic:kline.1.BTCUSD", "op": "subscribe"}
