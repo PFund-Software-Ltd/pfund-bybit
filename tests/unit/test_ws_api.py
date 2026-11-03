@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from pfund_blocks.entities.products.product_base import BaseProduct
 
 import asyncio
+from pathlib import Path
 
 import pytest
 from msgspec import json
@@ -239,3 +240,42 @@ class TestParseMessage:
         channel, decoded = result
         assert channel == "kline.1.BTCUSDT"
         assert api.parser.parse_message_error(channel, decoded) is None
+
+
+class TestSplitMessage:
+    def test_option_trades_are_split_per_added_option(self):
+        api = BybitWebSocketAPI("LIVE", "option")
+        call = create("BTC_USDT_OPT", expiration="2024-08-30", strike_price=60000, option_type="call")
+        put = create("BTC_USDT_OPT", expiration="2024-08-30", strike_price=60000, option_type="put")
+        channel = api.create_market_data_channel(call, Resolution("1t"))
+        api.create_market_data_channel(put, Resolution("1t"))
+        trades = [{"s": call.symbol, "p": "1"}, {"s": put.symbol, "p": "2"}, {"s": "NOT_ADDED", "p": "3"}, {"s": call.symbol, "p": "4"}]
+        msg = {"topic": channel, "ts": 1793708151679, "data": trades}
+        assert api._split_message(channel, msg) == [
+            (call.name, {**msg, "data": [trades[0], trades[3]]}),
+            (put.name, {**msg, "data": [trades[1]]}),
+        ]
+
+    def test_live_option_trade_matches_the_added_option(self):
+        api = BybitWebSocketAPI("LIVE", "option")
+        put = create("BTC_USDT_OPT", expiration="2026-11-04", strike_price=77000, option_type="put")
+        channel = api.create_market_data_channel(put, Resolution("1t"))
+        msg = json.decode((Path(__file__).parent / "responses" / "ws" / "public_trade_option.json").read_bytes())
+        assert api._split_message(channel, msg) == [(put.name, msg)]
+
+    def test_option_trades_of_no_added_option_are_dropped(self):
+        api = BybitWebSocketAPI("LIVE", "option")
+        call = create("BTC_USDT_OPT", expiration="2024-08-30", strike_price=60000, option_type="call")
+        channel = api.create_market_data_channel(call, Resolution("1t"))
+        assert api._split_message(channel, {"topic": channel, "data": [{"s": "NOT_ADDED"}]}) == []
+
+    def test_other_channels_are_not_split(self, api: BybitWebSocketAPI):
+        product = create("BTC_USDT_PERP")
+        channel = api.create_market_data_channel(product, Resolution("1m"))
+        msg = {"topic": channel, "data": [{"start": 1}, {"start": 2}]}
+        assert api._split_message(channel, msg) == [(product.name, msg)]
+
+    def test_error_without_channel_is_not_split(self):
+        api = BybitWebSocketAPI("LIVE", "option")
+        msg = {"success": False, "ret_msg": "error"}
+        assert api._split_message(None, msg) == [(None, msg)]

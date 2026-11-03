@@ -4,22 +4,32 @@ import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 import pytest
+from msgspec import ValidationError
 from pfund_blocks.entities.markets.market_base import BaseMarket
 from pfund_blocks.entities.products.product_type import ProductType
-from pfund_blocks.enums import OptionType
+from pfund_blocks.enums import OptionType, Side
 from pfund_blocks.parsers.dsl import SchemaParseError
+from pfund_blocks.resolution import Resolution
 
 from pfund_bybit.parser import BybitParser
 
 RESPONSES_DIR = Path(__file__).parent / "responses" / "rest"
+MESSAGES_DIR = Path(__file__).parent / "responses" / "ws"
 CATEGORIES = ["spot", "linear", "inverse", "option"]
 
 
 def load(category: str) -> dict[str, Any]:
     return json.loads((RESPONSES_DIR / f"get_markets_{category}.json").read_text())
+
+
+def load_message(name: str) -> dict[str, Any]:
+    return json.loads((MESSAGES_DIR / f"{name}.json").read_text())
 
 
 def parse_markets(category: str) -> list[dict[str, Any]]:
@@ -139,3 +149,93 @@ class TestToDatetime:
     def test_non_numeric_raises(self, ms: str):
         with pytest.raises(ValueError):
             BybitParser._to_datetime(ms)
+
+
+class TestParseCandlestick:
+    def test_bar(self):
+        [bar] = BybitParser().parse_candlestick(load_message("kline_linear"))
+        assert {k: v for k, v in bar.to_dict().items() if k != "created_at"} == {
+            "resolution": Resolution("1m"),
+            "start_ts": 1793707560000_000_000,
+            # Bybit's inclusive end 1793707619999 -> exclusive end
+            "end_ts": 1793707620000_000_000,
+            "updated_ts": 1793707610671_000_000,
+            "server_ts": 1793707610671_000_000,
+            "open": 77047.7,
+            "high": 77049.9,
+            "low": 77010.1,
+            "close": 77026.6,
+            "volume": 4.949,
+            "is_closed": False,
+        }
+
+    def test_closed_bar(self):
+        message = load_message("kline_linear")
+        message["data"][0]["confirm"] = True
+        [bar] = BybitParser().parse_candlestick(message)
+        assert bar.is_closed
+
+    def test_daily_bar(self):
+        message = load_message("kline_linear")
+        message["topic"] = "kline.D.BTCUSDT"
+        message["data"][0] |= {"start": 1793664000000, "end": 1793750399999, "interval": "D"}
+        [bar] = BybitParser().parse_candlestick(message)
+        assert bar.resolution == Resolution("1d")
+        assert bar.end_ts - bar.start_ts == 86400 * 1_000_000_000
+
+    def test_parse_message_routes_kline(self, mocker: MockerFixture):
+        parser = BybitParser()
+        spy = mocker.spy(parser, "parse_candlestick")
+        message = load_message("kline_linear")
+        assert parser.parse_message(message["topic"], message) == spy.spy_return
+        spy.assert_called_once_with(message)
+
+    def test_unknown_interval_raises(self):
+        message = load_message("kline_linear")
+        message["topic"] = "kline.2.BTCUSDT"
+        with pytest.raises(KeyError):
+            BybitParser().parse_candlestick(message)
+
+    def test_invalid_bar_raises(self):
+        message = load_message("kline_linear")
+        message["data"][0]["high"] = "1"  # below open, low and close
+        with pytest.raises(ValidationError, match="high"):
+            BybitParser().parse_candlestick(message)
+
+
+class TestParseTradebook:
+    def test_ticks(self):
+        ticks = BybitParser().parse_tradebook(load_message("public_trade_linear"))
+        assert [{k: v for k, v in tick.to_dict().items() if k != "created_at"} for tick in ticks] == [
+            {
+                "ts": 1793708150596_000_000,
+                "server_ts": 1793708150597_000_000,
+                "price": 77220.0,
+                "volume": volume,
+                "side": Side.BUY,
+            }
+            for volume in (0.131, 0.133, 0.001)
+        ]
+
+    def test_option_tick(self):
+        [tick] = BybitParser().parse_tradebook(load_message("public_trade_option"))
+        assert (tick.ts, tick.price, tick.volume, tick.side) == (1793708151669_000_000, 615.0, 0.08, Side.SELL)
+
+    def test_parse_message_routes_public_trade(self, mocker: MockerFixture):
+        parser = BybitParser()
+        spy = mocker.spy(parser, "parse_tradebook")
+        message = load_message("public_trade_linear")
+        assert parser.parse_message(message["topic"], message) == spy.spy_return
+        spy.assert_called_once_with(message)
+
+    def test_unknown_side_raises(self):
+        message = load_message("public_trade_linear")
+        message["data"][0]["S"] = "Unknown"
+        with pytest.raises(SchemaParseError, match=r"data\[0\]\.side: .* failed at _to_side: KeyError"):
+            BybitParser().parse_tradebook(message)
+
+    def test_negative_volume_raises(self):
+        message = load_message("public_trade_linear")
+        message["data"][0]["v"] = "-1"
+        with pytest.raises(ValidationError, match="volume"):
+            BybitParser().parse_tradebook(message)

@@ -124,9 +124,9 @@ class BybitAdapter(VenueAdapter):
             )
         if product.is_option():
             option = cast("OptionProduct", product)
-            # e.g. BTC-30AUG24-60000-C
-            expiration = f"{option.expiration:%d%b%y}".upper()
-            return f"{ebase_asset}-{expiration}-{option.strike_price}-{option.option_type[0]}"
+            # e.g. BTC-4NOV26-77000-P-USDT, the day has no leading zero
+            expiration = f"{option.expiration.day}{option.expiration:%b%y}".upper()
+            return f"{ebase_asset}-{expiration}-{option.strike_price}-{option.option_type[0]}-{equote_asset}"
         raise ValueError(f"{product.basis} is not supported by Bybit")
 
     @staticmethod

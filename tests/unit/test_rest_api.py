@@ -63,6 +63,12 @@ class TestGetMarkets:
         assert kwargs["url"] == BybitRestAPI.urls[api.env] + "/v5/market/instruments-info"
         assert kwargs["params"] == {"category": "linear", "limit": 1000}
 
+    async def test_option_request_gets_all_base_coins(self, mocker: MockerFixture):
+        api = BybitRestAPI("LIVE")
+        request = mock_responses(mocker, api, load("option"))
+        await api.get_markets("option")
+        assert request.call_args.kwargs["params"] == {"category": "option", "limit": 1000, "baseCoin": "All"}
+
     @pytest.mark.parametrize("category", ["spot", "linear", "inverse", "option"])
     async def test_success_is_parsed(self, mocker: MockerFixture, category: Any):
         api = BybitRestAPI("LIVE")

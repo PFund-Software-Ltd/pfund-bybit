@@ -38,7 +38,7 @@ class TestSymbol:
                     "strike_price": "60000.0",
                     "option_type": "call",
                 },
-                "BTC-30AUG24-60000-C",
+                "BTC-30AUG24-60000-C-USDT",
             ),
             (
                 "ETH_USDT_OPT",
@@ -47,7 +47,16 @@ class TestSymbol:
                     "strike_price": 2500,
                     "option_type": "PUT",
                 },
-                "ETH-30AUG24-2500-P",
+                "ETH-30AUG24-2500-P-USDT",
+            ),
+            (
+                "BTC_USDT_OPT",
+                {
+                    "expiration": "2026-11-04",
+                    "strike_price": 77000,
+                    "option_type": "PUT",
+                },
+                "BTC-4NOV26-77000-P-USDT",
             ),
         ],
     )

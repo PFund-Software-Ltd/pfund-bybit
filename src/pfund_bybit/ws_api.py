@@ -7,13 +7,13 @@ if TYPE_CHECKING:
     from pfund_blocks.entities.accounts.account_base import BaseAccount
     from pfund_blocks.entities.products.product_base import BaseProduct
     from pfund_blocks.typing import (
-        DecodedMessage,
         FullChannel,
-        Message,
         ProductName,
         RawMessage,
         WebSocketName,
     )
+
+    from pfund_bybit.typing import DecodedMessage
 
 from msgspec import json
 from pfund_blocks.apis.ws_api_base import BaseWebSocketAPI
@@ -117,7 +117,7 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
     def create_market_data_channel(self, product: BaseProduct, resolution: Resolution) -> FullChannel:
         full_channel = super().create_market_data_channel(product, resolution)
         # NOTE: an option's trade channel (e.g. "publicTrade.BTC") is shared by all options of the base coin,
-        # so it has no single product, filled per option in _dispatch_message()
+        # so it has no single product, split per option in _split_message()
         if self._category == Bybit.Category.OPTION and resolution.is_tick():
             self._channel_infos[full_channel] = ChannelInfo(product=None, resolution=repr(resolution))
         return full_channel
@@ -144,7 +144,7 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
         if resolution.is_tick():
             # e.g. "publicTrade.BTCUSDT"
             echannel = adapter.to_source(Channel.tradebook, group="channel", strict=True)
-            # NOTE: option trades are streamed per base coin, e.g. "publicTrade.BTC", see _dispatch_message()
+            # NOTE: option trades are streamed per base coin, e.g. "publicTrade.BTC", see _split_message()
             if self._category == Bybit.Category.OPTION:
                 ebase_asset = adapter.to_source(product.base_asset, group="asset")
                 return f"{echannel}.{ebase_asset}"
@@ -155,28 +155,27 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
             return f"{echannel}.{resolution.period}.{product.symbol}"
         raise NotImplementedError(f"{self.venue} {resolution=} is not supported")
 
-    async def _dispatch_message(self, message: Message) -> None:
+    def _split_message(self, full_channel: FullChannel | None, msg: DecodedMessage) -> list[tuple[ProductName | None, DecodedMessage]]:
         # NOTE: option trades are streamed per base coin, e.g. "publicTrade.BTC" has the trades of all BTC options,
-        # so its message is a bag of trades of many options, unwrapped into one message per added option
-        # REVIEW: sketch, needs parse_tradebook() to keep Bybit's symbol in each trade, assumed to be "symbol" here
+        # so its message is a bag of trades of many options, split into one message per added option
         # NOTE: the option trade channel is the only public channel without a product (see create_market_data_channel()),
         # private messages have no product either, but also no resolution
-        trades = message["data"]
+        channel_info = self._channel_infos.get(full_channel) if full_channel else None
         is_option_trades = (
             self._category == Bybit.Category.OPTION and
-            message["product"] is None and
-            message["resolution"] is not None
+            channel_info is not None and
+            channel_info.product is None and
+            channel_info.resolution is not None
         )
-        if not is_option_trades or trades is None:
-            return await super()._dispatch_message(message)
+        if not is_option_trades:
+            return super()._split_message(full_channel, msg)
         products = {product.symbol: product.name for product in self._products.values()}
         trades_per_product: dict[ProductName, list[Any]] = {}
-        for trade in trades:
+        for trade in msg["data"]:
             # trades of options that were not added are dropped
-            if product := products.get(trade["symbol"]):
+            if product := products.get(trade["s"]):
                 trades_per_product.setdefault(product, []).append(trade)
-        for product, product_trades in trades_per_product.items():
-            await super()._dispatch_message({**message, "product": product, "data": product_trades})
+        return [(product, {**msg, "data": trades}) for product, trades in trades_per_product.items()]
 
     def add_channel(self, channel: FullChannel, *, channel_type: ChannelType | Literal["public", "private"]):
         # one public connection per category, so a channel over the limit can't be streamed
@@ -207,7 +206,7 @@ class BybitWebSocketAPI(BaseWebSocketAPI):
             await self._send(ws, {"op": "unsubscribe", "args": batch})
 
     def _parse_message(self, ws: WebSocket, raw_msg: RawMessage) -> tuple[FullChannel | None, DecodedMessage] | None:
-        msg = json.decode(raw_msg)
+        msg: DecodedMessage = json.decode(raw_msg)
         # a failed request is Bybit's error, e.g. a rejected subscription
         is_success = msg.get("success")
         if is_success is False:
