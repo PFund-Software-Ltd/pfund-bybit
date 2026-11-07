@@ -1,6 +1,6 @@
 [project]
 name = "pfund-bybit"
-version = "0.0.1.dev1"
+version = "0.0.1"
 description = "Official Bybit trading venue plugin for `pfund`, can be used as a standalone Bybit trading API client built on pfund-blocks."
 readme = "README.md"
 authors = [

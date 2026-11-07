@@ -201,7 +201,7 @@ wheels = [
 
 [[package]]
 name = "pfund-bybit"
-version = "0.0.1.dev1"
+version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx2", extra = ["http2"] },
