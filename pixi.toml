@@ -4,14 +4,12 @@ channels = ["conda-forge"]
 name = "pfund-bybit"
 platforms = ["osx-arm64", "linux-aarch64", "linux-64", "win-64"]
 # NOTE: should match with setup-pixi in ci.yml
-requires-pixi = ">=0.83.0"
+requires-pixi = ">=0.84.1"
 # FIXME: set it back to "14 days" when the package is stable
 exclude-newer = "0d"
 
-[pypi-exclude-newer]
-uv_build = "0d"
-afterpython = "0d"
-pfund-blocks = "0d"
+[workspace.pypi-exclude-newer]
+exemptions = { afterpython = "*", uv_build = "*", pfund-blocks = "*" }
 
 [tasks]
 
@@ -25,7 +23,7 @@ depends-on = [
 [dependencies]
 
 [pypi-dependencies]
-pfund-blocks = ">=0.0.1"
+pfund-blocks = ">=0.0.3"
 httpx2 = { version = ">=2.16.0", extras = ["http2"] }
 websockets = ">=16.1.1"
 
@@ -37,13 +35,11 @@ py315 = ["py315", "test"]
 
 [feature.dev.pypi-dependencies]
 pfund-bybit = { path = ".", editable = true }
-pfund-blocks = { path = "../../../pfund-blocks", editable = true }  # TEMP
-afterpython = ">=0.4.0"
+afterpython = ">=0.4.1"
 pybit = ">=5.17.0"
 
 [feature.test.pypi-dependencies]
 pfund-bybit = { path = ".", editable = true }
-pfund-blocks = { path = "../../../pfund-blocks", editable = true }  # TEMP
 pytest = ">=9.1.1"
 pytest-mock = ">=3.17.0"
 pytest-xdist = ">=3.8.0"
