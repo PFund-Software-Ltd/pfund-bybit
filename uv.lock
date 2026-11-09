@@ -427,18 +427,18 @@ wheels = [
 
 [[package]]
 name = "pfund-blocks"
-version = "0.0.3"
+version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2", extra = ["http2"] },
     { name = "msgspec" },
     { name = "pydantic" },
     { name = "python-dotenv" },
-    { name = "websockets", marker = "sys_platform != 'emscripten'" },
+    { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/32/4a95c9bdafc72d3e254d9c0b3c36a1ef5d2c1f26bef39e6400a617944005/pfund_blocks-0.0.3.tar.gz", hash = "sha256:36466118a2317b6c6473cbb3c4f676b97291f51a5ee3befb8f007dee66be5a08", size = 47556, upload-time = "2026-11-07T18:04:40.221Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/7e/1f6b28ffe615907c56a4895896b18b97312108765a89c3be0b9c3ebec1b1/pfund_blocks-0.0.4.tar.gz", hash = "sha256:21a6864da2fe53ccd7f287fbd6322ce8096b618671adb37c1081405fba261e8b", size = 48173, upload-time = "2026-11-09T22:39:15.156Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/55/a85d7af2e58d08d9536691bb34e14eaea0bf5dbfde9eeb8ab6db4f4bc83d/pfund_blocks-0.0.3-py3-none-any.whl", hash = "sha256:0884a630c0efa7a8596cc507ccf42c5c02871d345fc9fca1d47ba180cef03f5d", size = 68673, upload-time = "2026-11-07T18:04:39.058Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/78/ea51365a1376874782a0f75f17be21c9e44ac4acd38121f94f5de23120e2/pfund_blocks-0.0.4-py3-none-any.whl", hash = "sha256:7c6a4febcb71c3b18db5153b5de82d9525222cfb57d42e08c158fd66ccd5f197", size = 69275, upload-time = "2026-11-09T22:39:13.629Z" },
 ]
 
 [[package]]
@@ -457,7 +457,7 @@ data = [
 [package.metadata]
 requires-dist = [
     { name = "pfeed-bybit", marker = "extra == 'data'", specifier = ">=0.0.1" },
-    { name = "pfund-blocks", specifier = ">=0.0.3" },
+    { name = "pfund-blocks", specifier = ">=0.0.4" },
 ]
 provides-extras = ["data"]
 
