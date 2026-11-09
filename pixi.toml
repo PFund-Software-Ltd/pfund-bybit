@@ -29,7 +29,7 @@ py315 = ["py315", "test"]
 [dependencies]
 
 [pypi-dependencies]
-pfund-blocks = ">=0.0.3"
+pfund-blocks = ">=0.0.4"
 
 [feature.optional.pypi-dependencies]
 pfeed-bybit = ">=0.0.1"
