@@ -1,7 +1,7 @@
 [project]
 name = "pfund-bybit"
 version = "0.0.1"
-description = "Official Bybit trading venue plugin for `pfund`, can be used as a standalone Bybit trading API client built on pfund-blocks."
+description = "Bybit trading venue plugin for `pfund`, can be used as a standalone Bybit trading API client built on pfund-blocks."
 readme = "README.md"
 authors = [
     { name = "softwareentrepreneer", email = "softwareentrepreneer+pfund-bybit@gmail.com" }
@@ -9,9 +9,10 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "pfund-blocks>=0.0.3",
-    "httpx2[http2]>=2.16.0",
-    "websockets>=16.1.1 ; sys_platform != 'emscripten'",
 ]
+
+[project.optional-dependencies]
+data = ["pfeed-bybit>=0.0.1"]
 
 [project.entry-points."pfund.venues"]
 bybit = "pfund_bybit:Bybit"
@@ -22,7 +23,7 @@ exclude-newer = "0 days"
 exclude-newer-package = { uv_build = false, pfund-blocks = false }
 
 [build-system]
-requires = ["uv_build>=0.13.5,<0.14.0"]
+requires = ["uv_build>=0.13.7,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.pytest]

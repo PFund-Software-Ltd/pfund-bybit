@@ -20,26 +20,29 @@ depends-on = [
   { task = "test", environment = "py315" },
 ]
 
-[dependencies]
-
-[pypi-dependencies]
-pfund-blocks = ">=0.0.3"
-httpx2 = { version = ">=2.16.0", extras = ["http2"] }
-websockets = ">=16.1.1"
-
 [environments]
-default = ["py313", "dev", "test"]
+default = ["py313", "dev", "test", "optional"]
 py313 = ["py313", "test"]
 py314 = ["py314", "test"]
 py315 = ["py315", "test"]
 
+[dependencies]
+
+[pypi-dependencies]
+pfund-blocks = ">=0.0.3"
+
+[feature.optional.pypi-dependencies]
+pfeed-bybit = ">=0.0.1"
+
 [feature.dev.pypi-dependencies]
 pfund-bybit = { path = ".", editable = true }
-afterpython = ">=0.4.1"
+# pfund-blocks = { path = "../../../pfund-blocks", editable = true }  # TEMP
+afterpython = ">=0.4.3"
 pybit = ">=5.17.0"
 
 [feature.test.pypi-dependencies]
 pfund-bybit = { path = ".", editable = true }
+# pfund-blocks = { path = "../../../pfund-blocks", editable = true }  # TEMP
 pytest = ">=9.1.1"
 pytest-mock = ">=3.17.0"
 pytest-xdist = ">=3.8.0"
