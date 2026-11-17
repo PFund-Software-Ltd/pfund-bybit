@@ -414,15 +414,15 @@ wheels = [
 
 [[package]]
 name = "pfeed-bybit"
-version = "0.0.1"
+version = "0.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pfeed" },
     { name = "pfund-bybit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0d/77/530c19325ad21db63a4c165f6735d89736a5c66e8607438ddf703864e036/pfeed_bybit-0.0.1.tar.gz", hash = "sha256:c86f0145d52edb3a13b988e7d8621632359e6b75c5b6283ed5649703f3325e4e", size = 6660, upload-time = "2026-11-07T19:04:35.176Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/db/382e9fa475babdf0e8e6148dfd3ff7338b19fd8260f29a6665ba62e64dd6/pfeed_bybit-0.0.2.tar.gz", hash = "sha256:5c9e2a5f4a7b407af3d61479794817ddc908494faa3ce110aa38ff62145a26fe", size = 6663, upload-time = "2026-11-09T22:59:19.206Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/30/fd3f152681b8303f4f1da8760cdfa3ab39da26651699e238d20ed51ecf1d/pfeed_bybit-0.0.1-py3-none-any.whl", hash = "sha256:b08c939c97a3f6dc6616d455b8235bd876e91b9cded1f180519ee9ce026be175", size = 8346, upload-time = "2026-11-07T19:04:34.193Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/07/8c47982075d7a0401162d76339c300f972165db7fb40e312b40d14192748/pfeed_bybit-0.0.2-py3-none-any.whl", hash = "sha256:7e59ac9d224d8fc3a90e9e09c46076d163303532a6bd69ab5846e8356a6e11e1", size = 8345, upload-time = "2026-11-09T22:59:18.354Z" },
 ]
 
 [[package]]
@@ -456,7 +456,7 @@ data = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pfeed-bybit", marker = "extra == 'data'", specifier = ">=0.0.1" },
+    { name = "pfeed-bybit", marker = "extra == 'data'", specifier = ">=0.0.2" },
     { name = "pfund-blocks", specifier = ">=0.0.4" },
 ]
 provides-extras = ["data"]

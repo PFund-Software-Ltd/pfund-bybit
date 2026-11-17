@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pfund_blocks.entities.markets.market_base import MarketDict
     from pfund_blocks.typing import EndpointName, FullChannel
 
     from pfund_bybit.typing import DecodedMessage, RawResponse
@@ -19,6 +18,7 @@ from pfund_blocks.enums import Channel, OptionType, Side
 from pfund_blocks.parsers.parser_base import BaseParser
 
 from pfund_bybit.adapter import BybitAdapter
+from pfund_bybit.market import BybitMarket, Category
 
 
 class BybitParser(BaseParser):
@@ -134,8 +134,8 @@ class BybitParser(BaseParser):
             return f"failed topics: {fail_topics}"
         return None
 
-    def parse_markets(self, response: RawResponse) -> list[MarketDict]:
-        """Parses the markets of one category (spot, linear, inverse or option) into dicts of BaseMarket's fields."""
+    def parse_markets(self, response: RawResponse) -> list[BybitMarket]:
+        """Parses the markets of one category (spot, linear, inverse or option)."""
         # fields shared by all categories
         market = {
             "symbol": ("symbol",),
@@ -162,16 +162,22 @@ class BybitParser(BaseParser):
         }
         markets = {
             "spot": market | {
+                "category": Category.SPOT,
                 "product_type": ProductType.model_validate("CRYPTO"),
                 "lot_size": ("lotSizeFilter", "basePrecision", Decimal),
             },
-            "linear": future_market,
-            "inverse": future_market,
+            "linear": future_market | {"category": Category.LINEAR},
+            "inverse": future_market | {"category": Category.INVERSE},
             "option": derivative_market | {
+                "category": Category.OPTION,
                 "product_type": ProductType.model_validate("OPTION"),
-                "option_type": ("optionsType", self._to_option_type),
-                "strike_price": ("symbol", self._to_strike_price),
+                # NOTE: () locates the market itself, the option-only fields are nested under "option"
+                "@option": (),
+                "option": {
+                    "option_type": ("optionsType", self._to_option_type),
+                    "strike_price": ("symbol", self._to_strike_price),
+                },
             },
         }
         schema = {"@data": ("result", "list"), "data": markets[response["result"]["category"]]}
-        return cast("list[MarketDict]", self.parse_schema(response, schema)["data"])
+        return [BybitMarket.model_validate(market) for market in self.parse_schema(response, schema)["data"]]

@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-data = ["pfeed-bybit>=0.0.1"]
+data = ["pfeed-bybit>=0.0.2"]
 
 [project.entry-points."pfund.venues"]
 bybit = "pfund_bybit:Bybit"

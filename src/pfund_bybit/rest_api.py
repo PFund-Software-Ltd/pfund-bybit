@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, Literal, cast
 
 if TYPE_CHECKING:
-    from pfund_blocks.entities.markets.market_base import MarketDict
     from pfund_blocks.typing import Reply
 
+    from pfund_bybit.market import BybitMarket
     from pfund_bybit.typing import RawResponse
 
 from http import HTTPMethod
@@ -43,7 +43,7 @@ class BybitRestAPI(BaseRestAPI):
         # NOTE: response is not None, a successful reply always has a response
         responses: list[RawResponse] = [cast("RawResponse", reply["response"])]
         # NOTE: data is not None, a successful reply is always parsed by BybitParser
-        markets = cast("list[MarketDict]", reply["data"])
+        markets = cast("list[BybitMarket]", reply["data"])
         # NOTE: linear, inverse and option are paginated, spot is not
         while cursor := responses[-1]["result"].get("nextPageCursor"):
             # NOTE: the cursor is url-encoded (e.g. "0%2C3"), unquote it so that it is not encoded twice
@@ -51,6 +51,6 @@ class BybitRestAPI(BaseRestAPI):
             if not page["success"]:
                 return page  # fail loudly instead of returning partial markets
             responses.append(cast("RawResponse", page["response"]))
-            markets += cast("list[MarketDict]", page["data"])
+            markets += cast("list[BybitMarket]", page["data"])
         reply["response"] = responses
         return reply
